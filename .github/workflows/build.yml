@@ -17,6 +17,12 @@ jobs:
           echo "APP_DIR=$d" >> $GITHUB_ENV
           echo "Dossier trouvé : $d"
 
+      - name: Mettre la bibliothèque de pubs à jour (correction)
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          sed -i 's/google_mobile_ads:.*/google_mobile_ads: ^8.0.0/' pubspec.yaml
+          cat pubspec.yaml
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -25,6 +31,9 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+
+      - name: Version de Flutter utilisée
+        run: flutter --version
 
       - name: Créer la partie Android du projet
         working-directory: ${{ env.APP_DIR }}
