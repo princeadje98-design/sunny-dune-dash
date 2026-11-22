@@ -48,7 +48,9 @@ jobs:
 
       - name: Ajouter ton App ID AdMob
         working-directory: ${{ env.APP_DIR }}
-        run: python3 tools/patch_android.py
+        run: |
+          python3 tools/patch_android.py
+          cat android/app/src/main/AndroidManifest.xml
 
       - name: Télécharger les paquets
         working-directory: ${{ env.APP_DIR }}
@@ -57,6 +59,27 @@ jobs:
       - name: APK de TEST (pubs de test)
         working-directory: ${{ env.APP_DIR }}
         run: flutter build apk --release && cp build/app/outputs/flutter-apk/app-release.apk sunny-TEST.apk
+
+      - name: Activer KVM (faux téléphone)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: DIAGNOSTIC - tester l'app et lire l'erreur
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          working-directory: ${{ env.APP_DIR }}
+          script: |
+            adb install -r sunny-TEST.apk
+            adb logcat -c
+            adb shell monkey -p com.sunnydune.sunny_dune_dash -c android.intent.category.LAUNCHER 1
+            sleep 20
+            adb logcat -d | grep -A 30 "FATAL EXCEPTION" | head -70
+            adb logcat -d | grep -iE "flutter|MobileAds|googleads" | tail -30
 
       - name: APK PRODUCTION (vraies pubs)
         working-directory: ${{ env.APP_DIR }}
