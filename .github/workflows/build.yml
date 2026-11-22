@@ -1,0 +1,61 @@
+name: Construire l'application Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trouver le dossier du jeu
+        run: |
+          d=$(dirname "$(find . -name pubspec.yaml -not -path './.git/*' | head -1)")
+          echo "APP_DIR=$d" >> $GITHUB_ENV
+          echo "Dossier trouvé : $d"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Créer la partie Android du projet
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          mkdir /tmp/save
+          cp -r lib /tmp/save/lib
+          cp pubspec.yaml /tmp/save/pubspec.yaml
+          flutter create --org com.sunnydune --project-name sunny_dune_dash --platforms=android .
+          rm -rf lib test
+          cp -r /tmp/save/lib lib
+          cp /tmp/save/pubspec.yaml pubspec.yaml
+
+      - name: Ajouter ton App ID AdMob
+        working-directory: ${{ env.APP_DIR }}
+        run: python3 tools/patch_android.py
+
+      - name: Télécharger les paquets
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter pub get
+
+      - name: APK de TEST (pubs de test)
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter build apk --release && cp build/app/outputs/flutter-apk/app-release.apk sunny-TEST.apk
+
+      - name: APK PRODUCTION (vraies pubs)
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter build apk --release --dart-define=PROD=true && cp build/app/outputs/flutter-apk/app-release.apk sunny-PROD.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sunny-dune-dash-apk
+          path: |
+            ${{ env.APP_DIR }}/sunny-TEST.apk
+            ${{ env.APP_DIR }}/sunny-PROD.apk
