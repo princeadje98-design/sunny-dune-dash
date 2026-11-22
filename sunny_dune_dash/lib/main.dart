@@ -296,7 +296,9 @@ class _GameScreenState extends State<GameScreen>
     final canRevive = !_revived && AdManager.instance.rewardedReady;
     return Container(
       color: Colors.black54,
-      child: Center(
+      child: Stack(
+        children: [
+          Center(
         child: Card(
           margin: const EdgeInsets.all(24),
           child: Padding(
@@ -328,12 +330,22 @@ class _GameScreenState extends State<GameScreen>
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Menu'),
                 ),
-                const SizedBox(height: 8),
-                const BannerAdWidget(),
               ],
             ),
           ),
         ),
+      ),
+          // Bannière tout en bas de l'écran, bien séparée des boutons (conformité AdMob)
+          const Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: BannerAdWidget(),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
