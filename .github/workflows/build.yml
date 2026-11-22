@@ -20,7 +20,7 @@ jobs:
       - name: Mettre la bibliothèque de pubs à jour (correction)
         working-directory: ${{ env.APP_DIR }}
         run: |
-          sed -i 's/google_mobile_ads:.*/google_mobile_ads: ^8.0.0/' pubspec.yaml
+          sed -i 's/google_mobile_ads:.*/google_mobile_ads: ^9.0.0/' pubspec.yaml
           cat pubspec.yaml
 
       - uses: actions/setup-java@v4
