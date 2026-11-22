@@ -52,13 +52,37 @@ jobs:
           python3 tools/patch_android.py
           cat android/app/src/main/AndroidManifest.xml
 
+      - name: Désactiver la réduction du code (R8)
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          python3 - <<'PY'
+          import os
+          for name in ['android/app/build.gradle.kts', 'android/app/build.gradle']:
+              if not os.path.exists(name):
+                  continue
+              s = open(name).read()
+              if name.endswith('.kts'):
+                  old = 'signingConfig = signingConfigs.getByName("debug")'
+                  new = 'isMinifyEnabled = false\n            isShrinkResources = false\n            ' + old
+              else:
+                  old = 'signingConfig signingConfigs.debug'
+                  new = 'minifyEnabled false\n            shrinkResources false\n            ' + old
+              if old in s:
+                  s = s.replace(old, new, 1)
+                  print('Reduction du code DESACTIVEE dans', name)
+              else:
+                  print('ATTENTION : ligne non trouvee dans', name)
+              open(name, 'w').write(s)
+              print(s)
+          PY
+
       - name: Télécharger les paquets
         working-directory: ${{ env.APP_DIR }}
         run: flutter pub get
 
       - name: APK de TEST (pubs de test)
         working-directory: ${{ env.APP_DIR }}
-        run: flutter build apk --release --no-shrink && cp build/app/outputs/flutter-apk/app-release.apk sunny-TEST.apk
+        run: flutter build apk --release && cp build/app/outputs/flutter-apk/app-release.apk sunny-TEST.apk
 
       - name: Activer KVM (faux téléphone)
         run: |
@@ -79,11 +103,11 @@ jobs:
             adb shell monkey -p com.sunnydune.sunny_dune_dash -c android.intent.category.LAUNCHER 1
             sleep 20
             echo "===== RESULTAT DU TEST ====="
-            if adb logcat -d | grep -q "FATAL EXCEPTION"; then echo "L'APP A PLANTE"; adb logcat -d | grep "Caused by" | head -10; else echo "L'APP DEMARRE SANS PLANTER"; fi
+            if adb logcat -d | grep -q "FATAL EXCEPTION"; then echo "L'APP A PLANTE"; adb logcat -d | grep -A 25 "FATAL EXCEPTION" | head -60; else echo "L'APP DEMARRE SANS PLANTER"; fi
 
       - name: APK PRODUCTION (vraies pubs)
         working-directory: ${{ env.APP_DIR }}
-        run: flutter build apk --release --no-shrink --dart-define=PROD=true && cp build/app/outputs/flutter-apk/app-release.apk sunny-PROD.apk
+        run: flutter build apk --release --dart-define=PROD=true && cp build/app/outputs/flutter-apk/app-release.apk sunny-PROD.apk
 
       - uses: actions/upload-artifact@v4
         with:
